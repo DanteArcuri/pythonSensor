@@ -1,6 +1,7 @@
 # useful libraries
 import RPi.GPIO as GPIO
 import time
+import sys
 
 
 # import the Morse code here
@@ -10,51 +11,47 @@ MC = morse.code()
 
 # set GPIO numbering 
 GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
 
-# setup LED
-leftLEDPin = 27;
-GPIO.setup(leftLEDPin, GPIO.OUT)
-
-
-# assign a variable for the pin numer
+# setup LED and button
+leftLEDPin = 27
 buttonPin = 25
-
-# configure the GPIO pin to accept inputs, and activate the pull-up resistor
-# PUD_UP for internal pull-up resistor - returns 1 when the button is released
+GPIO.setup(leftLEDPin, GPIO.OUT)
 GPIO.setup(buttonPin, GPIO.IN, pull_up_down = GPIO.PUD_DOWN)
+time_stamp = time.time()  
+
 
 # store your message
 message = 'Hello Mines!'
 
+#Set values for morse timing
 unit_dot = .1
 unit_dash = .3
 unit_rest = .1
 unit_word = .7
 unit_char = .3
 
-try:
-    
-    async def buttonPress():
-        GPIO.input(buttonPin)
+
+def buttonPress(channel):
+    global time_stamp       # put in to debounce  
+    time_now = time.time()  
+    if (time_now - time_stamp) >= 0.3: 
+        if (GPIO.input(buttonPin)):
+            GPIO.output(leftLEDPin, False)
+    time_stamp = time_now  
         
-    async def exitProgram():
-        r = await buttonPress()
-        if (r == 1):
             
-        
+def morseCode():
     for char in message:
         time.sleep(unit_char)
         print(char)
         if (char == ' '):
             time.sleep(unit_word)  
             continue
-            
+
         elif (char != '!'):
             morseChar = MC[char.upper()]
-            for char in morseChar: 
-                if (GPIO.input(buttonPin) == 1):
-                    break
-
+            for char in morseChar:
                 if (char == '.'):
                     GPIO.output(leftLEDPin, True)
                     time.sleep(unit_dot)
@@ -66,8 +63,14 @@ try:
                     GPIO.output(leftLEDPin, False)
                     time.sleep(unit_rest)
 
-except(KeyboardInterrupt, SystemExit):
+GPIO.add_event_detect(buttonPin, GPIO.RISING, callback=buttonPress)
+try:
+    
+    morseCode()
+    
+except (KeyboardInterrupt, SystemExit):
     print("Interrupt!")
+
 
 finally:
     print("Exiting...")
